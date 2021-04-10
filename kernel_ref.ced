@@ -2,22 +2,22 @@
 ;
 ;******************************************************************************
 ;
-;	Arquivo de ReferÍncia para o desenvolvimento do kernel.
+;	Arquivo de Refer√™ncia para o desenvolvimento do kernel.
 ;
-;	Vers„o: 2020.2
+;	Vers√£o: 2020.2
 ;
-;	¡reas de memÛria
+;	√Åreas de mem√≥ria
 ;
 ;	0000 - 7FFF		_KERNEL
-;					¡rea de Kernel para implementaÁ„o dos alunos
+;					√Årea de Kernel para implementa√ß√£o dos alunos
 ;
 ;	0100 - 01FF		_VETTAB
-;					Tabela com os vetores das funÁıes do kernel
-;					*** CUIDADO! Esse vetor est· no meio da ·rea de cÛdigo ***
+;					Tabela com os vetores das fun√ß√µes do kernel
+;					*** CUIDADO! Esse vetor est√© no meio da √°rea de c√≥digo ***
 ;
 ;	8000 - FF7F		_APP
-;					¡rea onde ser· colocado o programa de aplicaÁ„o.
-;					Esse programa vai fazer o acesso aos perifÈricos e interrupÁıes, atravÈs das funÁıes do Kernel.
+;					√Årea onde ser√° colocado o programa de aplica√ß√£o.
+;					Esse programa vai fazer o acesso aos perif√©ricos e interrup√ß√µes, atrav√©s das fun√ß√µes do Kernel.
 ;
 ;	FF80 - FFBF 	_IOAREA16
 ;					Area de perifericos, acessada na base 16 bits
@@ -37,18 +37,18 @@ _IOAREA08:	equ	hFFC0
 
 ;
 ;------------------------------------------------------------------------------
-;	¡rea reservada para os perifÈricos
+;	√Årea reservada para os perif√©ricos
 ;------------------------------------------------------------------------------
 
 ; Acesso em 16 bits
 		org		_IOAREA16
 		daw		[31]
-IVET:	dw		0			; Vetor de interrupÁ„o
+IVET:	dw		0			; Vetor de interrup√ß√£o
 
 ; Acesso em 8 bits
 		org		_IOAREA08
 		dab		[23]
-TIMDT:	db		0			; Registro de programaÁ„o do timer
+TIMDT:	db		0			; Registro de programa√ß√£o do timer
 INTS:	db		0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
 INTE:	db		0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
 TECST:	db		0			; Status do teclado
@@ -64,7 +64,7 @@ VISOR:	dab		[36]		; Portas de acesso ao visor
 
 ;
 ;------------------------------------------------------------------------------
-;	Area do kernel com os vetores das funÁıes do kernel
+;	Area do kernel com os vetores das fun√ß√µes do kernel
 ;------------------------------------------------------------------------------
 		org		_VETTAB
 		dw		_SETTEC
@@ -76,47 +76,47 @@ VISOR:	dab		[36]		; Portas de acesso ao visor
 		
 ;	
 ;------------------------------------------------------------------------------
-;	CÛdigo de RESET (BOOT) do processador/interrupÁ„o
+;	C√≥digo de RESET (BOOT) do processador/interrup√ß√£o
 ;------------------------------------------------------------------------------
 		org		_VETTAB+h0100
 _RESET:		
-; 1) Desabilitar o sistema de interrupÁıes
-	CLR INTE
+; 1) Desabilitar o sistema de interrup√ß√µes
+  CLR    INTE
 ; 2) Inicializar o stack pointer (SP = R6)
-	MOV #h7FFF, R6
-; 3) Inicializar as vari·veis internas usadas pelo sistema de interrupÁıes e perifÈricos (IVET, INTE, etc.)
-	MOV #ISR, IVET
-	CLR INTS
-; 4) Inicializar as vari·veis internas do kernel
+  MOV    #h7FFF, R6
+; 3) Inicializar as vari√°veis internas usadas pelo sistema de interrup√ß√µes e perif√©ricos (IVET, INTE, etc.)
+  MOV    #ISR, IVET
+  CLR    INTS
+; 4) Inicializar as vari√°veis internas do kernel
 
-; 5) Inicializar o teclado zerando o byte de estado (TECST, endereÁo 65498)
-	CLR TECST
+; 5) Inicializar o teclado zerando o byte de estado (TECST, endere√ßo 65498)
+  CLR    TECST
 ; 6) Inicializar o timer
-	MOV #10, TIMDT
+  MOV    #10, TIMDT
 ; 7) Limpar o visor
-	JSR R7, limpaVisor
-; 8) Habilitar interrupÁıes
-	MOV #h83, INTE
-; 9) Retornar para o programa de aplicaÁ„o com um desvio para o endereÁo _APP da memÛria
-		jmp		_APP
+  JSR    R7, limpaVisor
+; 8) Habilitar interrup√ß√µes
+  MOV    #h83, INTE
+; 9) Retornar para o programa de aplica√ß√£o com um desvio para o endere√ßo _APP da mem√≥ria
+  jmp    _APP
 
 limpaVisor:
-	MOV R0, -(R6)
-	MOV R1, -(R6)
-	MOV #VISOR, R1
-	MOV #36, R0
+  MOV    R0, -(R6)
+  MOV    R1, -(R6)
+  MOV    #VISOR, R1
+  MOV    #36, R0
 whileLimpaVisor:
-	CLR (R1)
-	INC R1
-	SOB R0, whileLimpaVisor
+  CLR    (R1)
+  INC    R1
+  SOB    R0, whileLimpaVisor
 	
-	MOV (R6)+, R1
-	MOV (R6)+, R0	
+  MOV    (R6)+, R1
+  MOV    (R6)+, R0	
 
-	RTS R7
+  RTS    R7
 ;	
 ;------------------------------------------------------------------------------
-;	Tratador de interrupÁıes
+;	Tratador de interrup√ß√µes
 ;------------------------------------------------------------------------------
 ISR:
 	
@@ -124,8 +124,8 @@ ISR:
 
 ;		
 ;------------------------------------------------------------------------------
-;	Informa ao kernel o endereÁo da estrutura de dados onde colocar as teclas que forem digitadas.
-;	O endereÁo de inÌcio dessa estrutura ser· passado para o kernel atravÈs do registrador R5.
+;	Informa ao kernel o endere√ßo da estrutura de dados onde colocar as teclas que forem digitadas.
+;	O endere√ßo de in√≠cio dessa estrutura ser√° passado para o kernel atrav√©s do registrador R5.
 ;------------------------------------------------------------------------------
 _SETTEC:
 		rts		r7
@@ -133,27 +133,27 @@ _SETTEC:
 ;		
 ;------------------------------------------------------------------------------
 ;	Envia um caractere ASCII para o visor. 
-;	Esse caractere pode ser um caractere visÌvel (que tenha representaÁ„o simbÛlica)
+;	Esse caractere pode ser um caractere vis√≠vel (que tenha representa√ß√£o simb√≥lica)
 ;		ou um caractere de controle.
-;	O caractere È passado atravÈs do registrador R5.
+;	O caractere √© passado atrav√©s do registrador R5.
 ;------------------------------------------------------------------------------
 _PUTCHAR:
 		rts		r7
 		
 ;		
 ;------------------------------------------------------------------------------
-;	Atualiza a hora atual do relÛgio interno do kernel.
-;	Informa a hora a ser usada em trÍs palavras de 2 bytes na memÛria.
-;	O endereÁo dessas trÍs palavras ser· passado para a funÁ„o atravÈs do registrador R5.
+;	Atualiza a hora atual do rel√≥gio interno do kernel.
+;	Informa a hora a ser usada em tr√™s palavras de 2 bytes na mem√≥ria.
+;	O endere√ßo dessas tr√™s palavras ser√° passado para a fun√ß√£o atrav√©s do registrador R5.
 ;------------------------------------------------------------------------------
 _SETCLOCK:
 		rts		r7
 		
 ;		
 ;------------------------------------------------------------------------------
-;	Informa a hora atual do relÛgio interno do kernel.
-;	Informa a hora em trÍs palavras de 2 bytes na memÛria.
-;	O endereÁo dessas trÍs palavras ser· passada para a funÁ„o atravÈs do registrador R5.
+;	Informa a hora atual do rel√≥gio interno do kernel.
+;	Informa a hora em tr√™s palavras de 2 bytes na mem√≥ria.
+;	O endere√ßo dessas tr√™s palavras ser√° passada para a fun√ß√£o atrav√©s do registrador R5.
 ;------------------------------------------------------------------------------
 _GETCLOCK:
 		rts		r7
@@ -161,16 +161,16 @@ _GETCLOCK:
 ;		
 ;------------------------------------------------------------------------------
 ;	Inicializa o timer interno do kernel com o valor informado em R5,
-;		que estar· em formato de 16 bits, sem sinal. 
-;	Esse valor estar· informado o valor a ser programado no timer, em milissegundos. 
+;		que estar√° em formato de 16 bits, sem sinal. 
+;	Esse valor estar√° informado o valor a ser programado no timer, em milissegundos. 
 ;------------------------------------------------------------------------------
 _SETTIMER:
 		rts		r7
 
 ;		
 ;------------------------------------------------------------------------------
-;	Retorna ao programa de aplicaÁ„o o valor atual do timer interno do kernel,
-;		que foi programado com a funÁ„o _SETTIMER.
+;	Retorna ao programa de aplica√ß√£o o valor atual do timer interno do kernel,
+;		que foi programado com a fun√ß√£o _SETTIMER.
 ;	Esse valor deve ser retornado no registrador R0.
 ;------------------------------------------------------------------------------
 _GETTIMER:
