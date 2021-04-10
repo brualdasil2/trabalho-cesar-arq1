@@ -88,7 +88,8 @@ _RESET:
   MOV    #ISR, IVET
   CLR    INTS
 ; 4) Inicializar as variáveis internas do kernel
-
+  CLR    cursor
+  CLR    tabbing
 ; 5) Inicializar o teclado zerando o byte de estado (TECST, endereço 65498)
   CLR    TECST
 ; 6) Inicializar o timer
@@ -96,10 +97,24 @@ _RESET:
 ; 7) Limpar o visor
   JSR    R7, limpaVisor
 ; 8) Habilitar interrupções
-  MOV    #h83, INTE
+  MOV    #h81, INTE
 ; 9) Retornar para o programa de aplicação com um desvio para o endereço _APP da memória
   jmp    _APP
 
+
+;	
+;------------------------------------------------------------------------------
+;	Área de variáveis
+;------------------------------------------------------------------------------
+end_struct_buffer: DW
+cursor: DW
+tabbing: DW
+;	
+;------------------------------------------------------------------------------
+;	Área de funções
+;------------------------------------------------------------------------------
+
+;função obtida da BibCesar, do livro "Fundamentos de arquitetura de computadores - Raul Weber"
 limpaVisor:
   MOV    R0, -(R6)
   MOV    R1, -(R6)
@@ -119,16 +134,87 @@ whileLimpaVisor:
 ;	Tratador de interrupções
 ;------------------------------------------------------------------------------
 ISR:
-	
-	rti
+  AND    #h7F, INTE 
+  MOV    R0, -(R6)
+  MOV    R1, -(R6)
+  MOV    R2, -(R6)
+  MOV    R3, -(R6)
+  MOV    R4, -(R6)
+  MOV    R5, -(R6)
 
+  MOV    INTS, R0
+  AND    #h01, R0      ;testa bit int timer
+  BNE    ISR_tim
+  MOV    INTS, R0
+  AND    #h02, R0      ;testa bit int teclado
+  BNE    ISR_tec
+fim_ISR:
+  MOV    (R6)+, R5
+  MOV    (R6)+, R4
+  MOV    (R6)+, R3
+  MOV    (R6)+, R2
+  MOV    (R6)+, R1
+  MOV    (R6)+, R0
+  OR     #h80, INTE 	;habilita interrupções
+  RTI
+ISR_tim:
+
+  AND    #hFFFE, INTS             ;desliga bit int timer
+  JMP    fim_ISR
+ISR_tec:
+  TST    TECST
+  BEQ    fim_tec
+  MOV    end_struct_buffer, R0
+  MOV    (R0), R1                 ;R1 = ind_entrada
+  MOV    2(R0), R2                ;R2 = ind_saida
+
+  JSR    R7, bufferCheio          ;retorna no R3 se está cheio
+  TST    R3
+  BNE    fim_tec
+  MOV    R1, R3
+  ASL    R3                       ;indice*2
+  ADD    R0, R3
+  ADD    #4, R3                   ;R3 = end buffer + ind_entrada
+  MOV    TECDT, (R3)              ;escreve o char na posicao de entrada do buffer
+
+  INC    R1
+  CMP    R1, #16
+  BGE    reset_ind_buffer
+  JMP    atualiza_ind_app
+reset_ind_buffer:
+  CLR    R1
+atualiza_ind_app:
+  MOV    R1, (R0)                 ;pos de memoria do indice = novo indice
+fim_tec:
+  CLR    TECST
+  AND    #hFFFD, INTS             ;desliga bit int teclado
+  JMP    fim_ISR
+
+bufferCheio:
+  MOV    R1, R3
+  INC    R3
+  CMP    R3, R2
+  BEQ    b_cheio
+  CMP    R3, #16
+  BNE    b_vazio
+  CMP    R2, #0
+  BNE    b_vazio
+b_cheio:
+  MOV    #1, R3
+  RTS    R7
+b_vazio:
+  CLR    R3
+  RTS    R7
 ;		
 ;------------------------------------------------------------------------------
 ;	Informa ao kernel o endereço da estrutura de dados onde colocar as teclas que forem digitadas.
 ;	O endereço de início dessa estrutura será passado para o kernel através do registrador R5.
 ;------------------------------------------------------------------------------
 _SETTEC:
-		rts		r7
+  MOV    R5, end_struct_buffer
+  OR     #h02, INTE               ;ativa int teclado
+  CLR    R0                       ;retorno sucesso (como pode dar erro??) 
+  rts    r7
 		
 ;		
 ;------------------------------------------------------------------------------
@@ -138,7 +224,59 @@ _SETTEC:
 ;	O caractere é passado através do registrador R5.
 ;------------------------------------------------------------------------------
 _PUTCHAR:
-		rts		r7
+	MOV R0, -(R6)
+
+	MOV cursor, R0
+	TST tabbing
+	BNE move_tab
+	CMP R5, #h20
+	BLT controle
+	CMP R5, #h7A
+	BGT controle
+	MOV R5, hFFDC(R0)	;move char pra #visor+R0
+	INC cursor
+	CMP cursor, #35
+	BLE pula_reset_cursor
+	CLR cursor
+pula_reset_cursor:
+	JMP fim_putchar
+controle:
+	CMP R5, #h0D	;erro? TESTA DNV, PODE TER SIDO UM LF ANTES DO CR
+	BEQ carriage_return
+	CMP R5, #h0A
+	BEQ line_feed
+	CMP R5, #h08
+	BEQ back_space
+	CMP R5, #h09
+	BEQ horizontal_tab
+	JMP fim_putchar
+carriage_return:
+	CLR cursor
+	JMP fim_putchar
+line_feed:
+	JSR R7, limpaVisor
+	JMP fim_putchar
+back_space:
+	;CLR hFFDC(R0)	;limpa o char 
+	TST cursor
+	BEQ fim_putchar
+	DEC cursor
+	JMP fim_putchar
+horizontal_tab:
+	MOV #1, tabbing
+	JMP fim_putchar
+move_tab:
+	CMP R5, #35
+	BGT pula_tab
+	MOV R5, cursor
+pula_tab:
+	CLR tabbing
+	JMP fim_putchar
+	
+fim_putchar:
+	MOV (R6)+, R0
+	CLR R0	;sucesso
+	rts		r7
 		
 ;		
 ;------------------------------------------------------------------------------
