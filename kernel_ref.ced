@@ -81,15 +81,46 @@ VISOR:	dab		[36]		; Portas de acesso ao visor
 		org		_VETTAB+h0100
 _RESET:		
 ; 1) Desabilitar o sistema de interrupções
+	CLR INTE
 ; 2) Inicializar o stack pointer (SP = R6)
+	MOV #h7FFF, R6
 ; 3) Inicializar as variáveis internas usadas pelo sistema de interrupções e periféricos (IVET, INTE, etc.)
+	MOV #ISR, IVET
+	CLR INTS
 ; 4) Inicializar as variáveis internas do kernel
+
 ; 5) Inicializar o teclado zerando o byte de estado (TECST, endereço 65498)
+	CLR TECST
 ; 6) Inicializar o timer
+	MOV #10, TIMDT
 ; 7) Limpar o visor
+	JSR R7, limpaVisor
 ; 8) Habilitar interrupções
+	MOV #h83, INTE
 ; 9) Retornar para o programa de aplicação com um desvio para o endereço _APP da memória
 		jmp		_APP
+
+limpaVisor:
+	MOV R0, -(R6)
+	MOV R1, -(R6)
+	MOV #VISOR, R1
+	MOV #36, R0
+whileLimpaVisor:
+	CLR (R1)
+	INC R1
+	SOB R0, whileLimpaVisor
+	
+	MOV (R6)+, R1
+	MOV (R6)+, R0	
+
+	RTS R7
+;	
+;------------------------------------------------------------------------------
+;	Tratador de interrupções
+;------------------------------------------------------------------------------
+ISR:
+	
+	rti
 
 ;		
 ;------------------------------------------------------------------------------
