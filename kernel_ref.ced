@@ -90,10 +90,10 @@ _RESET:
 ; 4) Inicializar as variáveis internas do kernel
   CLR    cursor
   CLR    tabbing
-  CLR rel_hora
-  CLR rel_minuto
-  CLR rel_segundo
-  CLR rel_ms_counter
+  CLR    rel_hora
+  CLR    rel_minuto
+  CLR    rel_segundo
+  CLR    rel_ms_counter
 ; 5) Inicializar o teclado zerando o byte de estado (TECST, endereço 65498)
   CLR    TECST
 ; 6) Inicializar o timer
@@ -167,29 +167,29 @@ fim_ISR:
   OR     #h80, INTE               ;habilita interrupções
   RTI
 ISR_tim:
-  CMP timer_tempo, #0
-  BEQ relogio
-  SUB #10, timer_tempo
-  CMP timer_tempo, #0
-  BGE relogio
-  CLR timer_tempo
+  CMP    timer_tempo, #0
+  BEQ    relogio
+  SUB    #10, timer_tempo
+  CMP    timer_tempo, #0
+  BGE    relogio
+  CLR    timer_tempo
 relogio:
-  INC rel_ms_counter
-  CMP rel_ms_counter, #100  ;passou um segundo
-  BLT fim_tim
-  CLR rel_ms_counter
-  INC rel_segundo 
-  CMP rel_segundo, #60
-  BLT fim_tim
-  CLR rel_segundo 
-  INC rel_minuto
-  CMP rel_minuto, #60
-  BLT fim_tim
-  CLR rel_minuto
-  INC rel_hora
-  CMP rel_hora, #24
-  BLT fim_tim
-  CLR rel_hora
+  INC    rel_ms_counter
+  CMP    rel_ms_counter, #100     ;passou um segundo
+  BLT    fim_tim
+  CLR    rel_ms_counter
+  INC    rel_segundo 
+  CMP    rel_segundo, #60
+  BLT    fim_tim
+  CLR    rel_segundo 
+  INC    rel_minuto
+  CMP    rel_minuto, #60
+  BLT    fim_tim
+  CLR    rel_minuto
+  INC    rel_hora
+  CMP    rel_hora, #24
+  BLT    fim_tim
+  CLR    rel_hora
 fim_tim:
   AND    #hFFFE, INTS             ;desliga bit int timer
   JMP    fim_ISR
@@ -246,7 +246,7 @@ _SETTEC:
   MOV    R5, end_struct_buffer
   OR     #h02, INTE               ;ativa int teclado
   CLR    R0                       ;retorno sucesso (como pode dar erro??) 
-  rts    r7
+  RTS    R7
 		
 ;		
 ;------------------------------------------------------------------------------
@@ -273,7 +273,7 @@ _PUTCHAR:
 pula_reset_cursor:
   JMP    fim_putchar
 controle:
-  CMP    R5, #h0D                 ;erro? TESTA DNV, PODE TER SIDO UM LF ANTES DO CR
+  CMP    R5, #h0D                 
   BEQ    carriage_return
   CMP    R5, #h0A
   BEQ    line_feed
@@ -281,7 +281,7 @@ controle:
   BEQ    back_space
   CMP    R5, #h09
   BEQ    horizontal_tab
-  JMP    fim_putchar
+  JMP    erro_putchar
 carriage_return:
   CLR    cursor
   JMP    fim_putchar
@@ -304,11 +304,12 @@ move_tab:
 pula_tab:
   CLR    tabbing
   JMP    fim_putchar
-	
+erro_putchar:
+  MOV    #1, R0                   ;erro, char invalido
+  RTS    R7
 fim_putchar:
-  MOV    (R6)+, R0
   CLR    R0                       ;sucesso
-  rts    r7
+  RTS    R7
 		
 ;		
 ;------------------------------------------------------------------------------
@@ -336,11 +337,11 @@ _SETCLOCK:
   MOV    (R5), rel_hora
   MOV    2(R5), rel_minuto
   MOV    4(R5), rel_segundo
-  CLR    R0                    ;sucesso!
+  CLR    R0                       ;sucesso!
   RTS    R7
 
 erro_rel:
-  MOV    #1, R0                ;erro! valor inválido
+  MOV    #1, R0                   ;erro! valor inválido
   RTS    r7
 		
 ;		
@@ -354,7 +355,7 @@ _GETCLOCK:
   MOV    rel_minuto, 2(R5)
   MOV    rel_segundo, 4(R5)
 
-  CLR    R0                    ;sucesso! (como pode dar erro?)
+  CLR    R0                       ;sucesso! (como pode dar erro?)
   RTS    r7
 		
 ;		
@@ -364,14 +365,14 @@ _GETCLOCK:
 ;	Esse valor estará informado o valor a ser programado no timer, em milissegundos. 
 ;------------------------------------------------------------------------------
 _SETTIMER:
-  CMP R5, #0
-  BLT erro_timer
+  CMP    R5, #0
+  BLT    erro_timer
 
-  MOV R5, timer_tempo
-  CLR R0
-  RTS R7
+  MOV    R5, timer_tempo
+  CLR    R0
+  RTS    R7
 erro_timer:
-  MOV #1, R0
+  MOV    #1, R0
   RTS    R7
 
 ;		
@@ -381,7 +382,7 @@ erro_timer:
 ;	Esse valor deve ser retornado no registrador R0.
 ;------------------------------------------------------------------------------
 _GETTIMER:
-  MOV timer_tempo, R0
+  MOV    timer_tempo, R0
   RTS    R7
 
 
