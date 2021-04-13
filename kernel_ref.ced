@@ -117,6 +117,7 @@ rel_hora: DW
 rel_minuto: DW
 rel_segundo: DW
 rel_ms_counter: DW
+timer_tempo: DW
 ;	
 ;------------------------------------------------------------------------------
 ;	Área de funções
@@ -166,6 +167,13 @@ fim_ISR:
   OR     #h80, INTE               ;habilita interrupções
   RTI
 ISR_tim:
+  CMP timer_tempo, #0
+  BEQ relogio
+  SUB #10, timer_tempo
+  CMP timer_tempo, #0
+  BGE relogio
+  CLR timer_tempo
+relogio:
   INC rel_ms_counter
   CMP rel_ms_counter, #100  ;passou um segundo
   BLT fim_tim
@@ -356,7 +364,15 @@ _GETCLOCK:
 ;	Esse valor estará informado o valor a ser programado no timer, em milissegundos. 
 ;------------------------------------------------------------------------------
 _SETTIMER:
-  rts    r7
+  CMP R5, #0
+  BLT erro_timer
+
+  MOV R5, timer_tempo
+  CLR R0
+  RTS R7
+erro_timer:
+  MOV #1, R0
+  RTS    R7
 
 ;		
 ;------------------------------------------------------------------------------
@@ -365,7 +381,8 @@ _SETTIMER:
 ;	Esse valor deve ser retornado no registrador R0.
 ;------------------------------------------------------------------------------
 _GETTIMER:
-  rts    r7
+  MOV timer_tempo, R0
+  RTS    R7
 
 
 	
