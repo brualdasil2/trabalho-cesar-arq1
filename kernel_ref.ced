@@ -110,14 +110,14 @@ _RESET:
 ;------------------------------------------------------------------------------
 ;	Área de variáveis
 ;------------------------------------------------------------------------------
-end_struct_buffer: DW
-cursor: DW
-tabbing: DW
-rel_hora: DW
+end_struct_buffer: DW ;endereço do buffer
+cursor: DW  ;indice do cursor
+tabbing: DW ;bool se está sendo passado um deslocamento do tab
+rel_hora: DW  ;valores do relogio
 rel_minuto: DW
 rel_segundo: DW
-rel_ms_counter: DW
-timer_tempo: DW
+rel_ms_counter: DW  ;contador de ms
+timer_tempo: DW ;tempo restante no timer
 ;	
 ;------------------------------------------------------------------------------
 ;	Área de funções
@@ -143,8 +143,8 @@ whileLimpaVisor:
 ;	Tratador de interrupções
 ;------------------------------------------------------------------------------
 ISR:
-  AND    #h7F, INTE 
-  MOV    R0, -(R6)
+  AND    #h7F, INTE ;desabilita interrupcoes
+  MOV    R0, -(R6)  ;salva regs
   MOV    R1, -(R6)
   MOV    R2, -(R6)
   MOV    R3, -(R6)
@@ -158,7 +158,7 @@ ISR:
   AND    #h02, R0                 ;testa bit int teclado
   BNE    ISR_tec
 fim_ISR:
-  MOV    (R6)+, R5
+  MOV    (R6)+, R5  ;resgata regs
   MOV    (R6)+, R4
   MOV    (R6)+, R3
   MOV    (R6)+, R2
@@ -166,27 +166,27 @@ fim_ISR:
   MOV    (R6)+, R0
   OR     #h80, INTE               ;habilita interrupções
   RTI
-ISR_tim:
+ISR_tim:  ;acessada a cada 10ms
   CMP    timer_tempo, #0
   BEQ    relogio
-  SUB    #10, timer_tempo
+  SUB    #10, timer_tempo ;decrementa 10ms do timer
   CMP    timer_tempo, #0
   BGE    relogio
-  CLR    timer_tempo
+  CLR    timer_tempo  ;se o timer estiver negativo (tinha menos de 10ms nele), deixa em 0
 relogio:
   INC    rel_ms_counter
   CMP    rel_ms_counter, #100     ;passou um segundo
   BLT    fim_tim
   CLR    rel_ms_counter
-  INC    rel_segundo 
+  INC    rel_segundo  ;segundo++
   CMP    rel_segundo, #60
   BLT    fim_tim
   CLR    rel_segundo 
-  INC    rel_minuto
+  INC    rel_minuto ;minuto++
   CMP    rel_minuto, #60
   BLT    fim_tim
   CLR    rel_minuto
-  INC    rel_hora
+  INC    rel_hora ;hora++
   CMP    rel_hora, #24
   BLT    fim_tim
   CLR    rel_hora
@@ -194,7 +194,7 @@ fim_tim:
   AND    #hFFFE, INTS             ;desliga bit int timer
   JMP    fim_ISR
 ISR_tec:
-  TST    TECST
+  TST    TECST  ;testa se há tecla
   BEQ    fim_tec
   MOV    end_struct_buffer, R0
   MOV    (R0), R1                 ;R1 = ind_entrada
@@ -204,14 +204,14 @@ ISR_tec:
   TST    R3
   BNE    fim_tec
   MOV    R1, R3
-  ASL    R3                       ;indice*2
+  ASL    R3                       ;indice*2 pois é um vetor de 2 bytes
   ADD    R0, R3
-  ADD    #4, R3                   ;R3 = end buffer + ind_entrada
+  ADD    #4, R3                   ;R3 = end buffer + ind_entrada*2
   MOV    TECDT, (R3)              ;escreve o char na posicao de entrada do buffer
 
-  INC    R1
+  INC    R1 ;incrementa entrada do buffer
   CMP    R1, #16
-  BGE    reset_ind_buffer
+  BGE    reset_ind_buffer ;se chegou ao fim, zera (circular)
   JMP    atualiza_ind_app
 reset_ind_buffer:
   CLR    R1
@@ -222,19 +222,19 @@ fim_tec:
   AND    #hFFFD, INTS             ;desliga bit int teclado
   JMP    fim_ISR
 
-bufferCheio:
+bufferCheio:  ;retorna 1 se o buffer está cheio e 0 caso contrário
   MOV    R1, R3
-  INC    R3
+  INC    R3 
   CMP    R3, R2
-  BEQ    b_cheio
-  CMP    R3, #16
-  BNE    b_vazio
+  BEQ    b_cheio  ;se ind_entrada + 1 == ind_saida -> cheio
+  CMP    R3, #16  
+  BNE    b_n_cheio
   CMP    R2, #0
-  BNE    b_vazio
-b_cheio:
+  BNE    b_n_cheio  ;se ind_entrada + 1 == 15 && ind_saida == 0 -> cheio
+b_cheio:  
   MOV    #1, R3
   RTS    R7
-b_vazio:
+b_n_cheio:
   CLR    R3
   RTS    R7
 ;		
@@ -256,24 +256,23 @@ _SETTEC:
 ;	O caractere é passado através do registrador R5.
 ;------------------------------------------------------------------------------
 _PUTCHAR:
-  MOV    R0, -(R6)
 
   MOV    cursor, R0
-  TST    tabbing
+  TST    tabbing  ;testa se é um acesso pós HT
   BNE    move_tab
-  CMP    R5, #h20
+  CMP    R5, #h20 ;se char não for char visivel, testa se é de controle
   BLT    controle
   CMP    R5, #h7A
   BGT    controle
   MOV    R5, hFFDC(R0)            ;move char pra #visor+R0
-  INC    cursor
-  CMP    cursor, #35
+  INC    cursor ;move cursor
+  CMP    cursor, #35  ;se cursor chegou ao fim, reseta (circular)
   BLE    pula_reset_cursor
   CLR    cursor
 pula_reset_cursor:
   JMP    fim_putchar
 controle:
-  CMP    R5, #h0D                 
+  CMP    R5, #h0D ;testa cada char de controle, e faz seu tratamento                 
   BEQ    carriage_return
   CMP    R5, #h0A
   BEQ    line_feed
@@ -281,26 +280,25 @@ controle:
   BEQ    back_space
   CMP    R5, #h09
   BEQ    horizontal_tab
-  JMP    erro_putchar
+  JMP    erro_putchar ;se nao era visivel nem um dos 4 chars de controle, retorna erro
 carriage_return:
-  CLR    cursor
+  CLR    cursor ;reseta cursor
   JMP    fim_putchar
 line_feed:
-  JSR    R7, limpaVisor
+  JSR    R7, limpaVisor ;limpa o visor
   JMP    fim_putchar
 back_space:
-	;CLR hFFDC(R0)	;limpa o char 
-  TST    cursor
+  TST    cursor ;se cursor == 0 (inicio visor), ignora
   BEQ    fim_putchar
-  DEC    cursor
+  DEC    cursor ;move cursor pra trás
   JMP    fim_putchar
 horizontal_tab:
-  MOV    #1, tabbing
+  MOV    #1, tabbing  ;prepara pra receber o deslocamento na prox chamada
   JMP    fim_putchar
 move_tab:
-  CMP    R5, #35
+  CMP    R5, #35  ;se deslocamento > tam_visor -> ignora
   BGT    pula_tab
-  MOV    R5, cursor
+  MOV    R5, cursor ;seta o cursor com o valor recebido
 pula_tab:
   CLR    tabbing
   JMP    fim_putchar
@@ -321,20 +319,20 @@ _SETCLOCK:
   ;hora = (R5)
   ;minuto = 2(R5)
   ;segundo = 4(R5)
-  CMP    (R5), #0
+  CMP    (R5), #0 ;se hora < 0 ou > 23 -> erro
   BLT    erro_rel
   CMP    (R5), #23
   BGT    erro_rel
-  CMP    2(R5), #0
+  CMP    2(R5), #0  ;se min < 0 ou > 59 -> erro
   BLT    erro_rel
   CMP    2(R5), #59
   BGT    erro_rel
-  CMP    4(R5), #0
+  CMP    4(R5), #0  ;se seg < 0 ou > 59 -> erro
   BLT    erro_rel
   CMP    4(R5), #59
   BGT    erro_rel
 
-  MOV    (R5), rel_hora
+  MOV    (R5), rel_hora ;atualiza hora, min e seg
   MOV    2(R5), rel_minuto
   MOV    4(R5), rel_segundo
   CLR    R0                       ;sucesso!
@@ -351,7 +349,7 @@ erro_rel:
 ;	O endereço dessas três palavras será passada para a função através do registrador R5.
 ;------------------------------------------------------------------------------
 _GETCLOCK:
-  MOV    rel_hora, (R5)
+  MOV    rel_hora, (R5) ;move dados para a área de memória
   MOV    rel_minuto, 2(R5)
   MOV    rel_segundo, 4(R5)
 
@@ -365,14 +363,14 @@ _GETCLOCK:
 ;	Esse valor estará informado o valor a ser programado no timer, em milissegundos. 
 ;------------------------------------------------------------------------------
 _SETTIMER:
-  CMP    R5, #0
+  CMP    R5, #0 ;se for negativo, erro
   BLT    erro_timer
 
-  MOV    R5, timer_tempo
-  CLR    R0
+  MOV    R5, timer_tempo  ;seta o timer com o valor recebido
+  CLR    R0 ;sucesso!
   RTS    R7
 erro_timer:
-  MOV    #1, R0
+  MOV    #1, R0 ;erro! valor inválido
   RTS    R7
 
 ;		
@@ -382,7 +380,7 @@ erro_timer:
 ;	Esse valor deve ser retornado no registrador R0.
 ;------------------------------------------------------------------------------
 _GETTIMER:
-  MOV    timer_tempo, R0
+  MOV    timer_tempo, R0  ;retorna o valor do timer em R0
   RTS    R7
 
 
