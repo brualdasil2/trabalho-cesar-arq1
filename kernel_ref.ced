@@ -90,9 +90,6 @@ _RESET:
 ; 4) Inicializar as variáveis internas do kernel
   CLR    cursor
   CLR    tabbing
-  CLR    rel_hora
-  CLR    rel_minuto
-  CLR    rel_segundo
   CLR    rel_ms_counter
 ; 5) Inicializar o teclado zerando o byte de estado (TECST, endereço 65498)
   CLR    TECST
@@ -113,9 +110,9 @@ _RESET:
 end_struct_buffer: DW ;endereço do buffer
 cursor: DW  ;indice do cursor
 tabbing: DW ;bool se está sendo passado um deslocamento do tab
-rel_hora: DW  ;valores do relogio
-rel_minuto: DW
-rel_segundo: DW
+rel_hora: DW 0 ;valores do relogio
+rel_minuto: DW 0
+rel_segundo: DW 0
 rel_ms_counter: DW  ;contador de ms
 timer_tempo: DW ;tempo restante no timer
 ;	
